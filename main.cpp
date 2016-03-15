@@ -39,6 +39,14 @@ static const int SECTOR_DIMENTION = 4;
 struct MapSector
 {
     MapBlock blocks[SECTOR_DIMENTION][SECTOR_DIMENTION][SECTOR_DIMENTION];
+    vector3df position;
+
+    MapSector(vector3df pos = {0,0,0})
+        : position(pos)
+    {
+
+    }
+
     MapBlock &operator()(unsigned int x, unsigned int y, unsigned int z)
     {
         assert(x < SECTOR_DIMENTION && y < SECTOR_DIMENTION && z < SECTOR_DIMENTION);
@@ -47,8 +55,11 @@ struct MapSector
 
     static const int delta = 10;
 
-    void buildMesh(vector<video::S3DVertex> &vertices, vector<u16> &indices)
+    void buildMesh(vector<video::S3DVertex> &vertices, vector<u16> &indices, video::SColor color)
     {
+        video::SColor colors[SECTOR_DIMENTION] = {video::SColor(255, 255, 0, 0), video::SColor(255, 0, 255, 0), 
+                                                  video::SColor(255, 0, 0, 255), video::SColor(255, 255, 255, 0)};
+
         for (int i = 0; i < SECTOR_DIMENTION; i++)
         {
             for (int j = 0 ; j < SECTOR_DIMENTION; j++)
@@ -58,15 +69,15 @@ struct MapSector
                     if (blocks[i][j][k].type != EMPTY)
                     {
                         u16 si = vertices.size();
-                        vertices.push_back(video::S3DVertex(i*delta,j*delta,k*delta, 1,1,0, video::SColor(255,0,255,255), 0, 1));
-                        vertices.push_back(video::S3DVertex(i*delta+delta,j*delta,k*delta, 1,0,0, video::SColor(255,255,0,255), 1, 1));
-                        vertices.push_back(video::S3DVertex(i*delta,j*delta+delta,k*delta, 0,1,1, video::SColor(255,255,255,0), 1, 0));
-                        vertices.push_back(video::S3DVertex(i*delta+delta,j*delta+delta,k*delta, 0,0,1, video::SColor(255,0,255,0), 0, 0));
+                        vertices.push_back(video::S3DVertex(i*delta,j*delta,k*delta, 1,1,0, colors[k], 0, 1));
+                        vertices.push_back(video::S3DVertex(i*delta+delta,j*delta,k*delta, 1,0,0, colors[k], 1, 1));
+                        vertices.push_back(video::S3DVertex(i*delta,j*delta+delta,k*delta, 0,1,1, colors[k], 1, 0));
+                        vertices.push_back(video::S3DVertex(i*delta+delta,j*delta+delta,k*delta, 0,0,1, colors[k], 0, 0));
 
-                        vertices.push_back(video::S3DVertex(i*delta,j*delta,k*delta+delta, 1,1,0, video::SColor(255,0,255,255), 0, 1));
-                        vertices.push_back(video::S3DVertex(i*delta+delta,j*delta,k*delta+delta, 1,0,0, video::SColor(255,255,0,255), 1, 1));
-                        vertices.push_back(video::S3DVertex(i*delta,j*delta+delta,k*delta+delta, 0,1,1, video::SColor(255,255,255,0), 1, 0));
-                        vertices.push_back(video::S3DVertex(i*delta+delta,j*delta+delta,k*delta+delta, 0,0,1, video::SColor(255,0,255,0), 0, 0));                        
+                        vertices.push_back(video::S3DVertex(i*delta,j*delta,k*delta+delta, 1,1,0, colors[k], 0, 1));
+                        vertices.push_back(video::S3DVertex(i*delta+delta,j*delta,k*delta+delta, 1,0,0, colors[k], 1, 1));
+                        vertices.push_back(video::S3DVertex(i*delta,j*delta+delta,k*delta+delta, 0,1,1, colors[k], 1, 0));
+                        vertices.push_back(video::S3DVertex(i*delta+delta,j*delta+delta,k*delta+delta, 0,0,1, colors[k], 0, 0));                        
 
                         u16 ind[] = {   si,si+3,si+1, si,si+2,si+3, si+4,si+5,si+7, si+4,si+7,si+6
 //                                        si,si+4,si+3, si+3,si+4,si+7, si+6,si+5,si+1, si+2,si+6,si+1,
@@ -87,18 +98,19 @@ class Map
 public:
     Map()
     {
-        sector(0,0,0) = DERT;
-        sector(0,0,1) = DERT;
-        sector(0,0,2) = DERT;
-        sector(0,0,3) = DERT;
-        sector(1,0,3) = DERT;
-        sector(1,1,3) = DERT;
-        sector(3,3,3) = DERT;
+        sector(0,0,0) = EMPTY;
+        sector(0,0,1) = EMPTY;
+        sector(0,0,2) = EMPTY;
+        sector(0,0,3) = EMPTY;
+        sector(1,0,3) = EMPTY;
+        sector(1,1,3) = EMPTY;
+        sector(3,3,3) = EMPTY;
     }
 
     void buildMesh(vector<video::S3DVertex> &vertices, vector<u16> &indices)
     {
-        sector.buildMesh(vertices, indices);
+        video::SColor color(255, 255, 0, 0);
+        sector.buildMesh(vertices, indices, color);
     }
 };
 
@@ -137,6 +149,7 @@ int main(int argc, char *args[])
     std::cout << "test1" << std::endl;
 
     Map map;
+    float angle = 0;
 
     // ask user for driver
     video::E_DRIVER_TYPE driverType=EDT_OPENGL;
@@ -158,8 +171,9 @@ int main(int argc, char *args[])
 
     ICameraSceneNode * camera;
 
-    camera = smgr->addCameraSceneNode(0, vector3df(-100,-100,100), vector3df(0,0,0));
+    camera = smgr->addCameraSceneNode(0, vector3df(-100,0,100), vector3df(0,0,0));
     camera->bindTargetAndRotation(false);
+    camera->setUpVector(vector3df(0,0,1));
     SMesh *mesh = new SMesh();
 /////
     vector<video::S3DVertex> vertices;
@@ -186,32 +200,57 @@ int main(int argc, char *args[])
     {
 
         vector3df nodePosition = camera->getPosition();
+        vector3df up = camera->getUpVector();
         vector3df nodeTarget = camera->getTarget();
 
+        vector3df dir = nodeTarget - nodePosition;
+        dir.normalize();
+
+        vector3df moveTo;
+
         if(receiver.IsKeyDown(irr::KEY_KEY_A)) {
-            nodePosition.Z += MOVEMENT_SPEED * frameDeltaTime;
-            nodeTarget.Z += MOVEMENT_SPEED * frameDeltaTime;
+            vector3df left = up.crossProduct(dir);
+            left.normalize();
+
+            float distanse = MOVEMENT_SPEED * frameDeltaTime;
+            left *= distanse;
+            left.Z = 0;
+
+            nodePosition += left;
+            nodeTarget += left;
         }
         else if(receiver.IsKeyDown(irr::KEY_KEY_D)) {
-            nodePosition.Z -= MOVEMENT_SPEED * frameDeltaTime;
-            nodeTarget.Z -= MOVEMENT_SPEED * frameDeltaTime;
+            vector3df left = up.crossProduct(dir);
+            left.normalize();
+
+            float distanse = MOVEMENT_SPEED * frameDeltaTime;
+            left *= distanse;
+            left.Z = 0;
+
+            nodePosition -= left;
+            nodeTarget -= left;
+
         }
 
         if(receiver.IsKeyDown(irr::KEY_KEY_W)) {
-            nodePosition.X -= MOVEMENT_SPEED * frameDeltaTime;
-            nodeTarget.X -= MOVEMENT_SPEED * frameDeltaTime;
+            float distanse = MOVEMENT_SPEED * frameDeltaTime;
+            dir *= distanse;
+            dir.Z = 0;
+            nodePosition -= dir;
+            nodeTarget -= dir;
         }
         else if(receiver.IsKeyDown(irr::KEY_KEY_S)) {
-            nodePosition.X += MOVEMENT_SPEED * frameDeltaTime;
-            nodeTarget.X += MOVEMENT_SPEED * frameDeltaTime;
+            float distanse = MOVEMENT_SPEED * frameDeltaTime;
+            dir *= distanse;
+            dir.Z = 0;
+            nodePosition += dir;
+            nodeTarget += dir;
         }
         else if(receiver.IsKeyDown(irr::KEY_KEY_Q)) {
-//            nodePosition.X += MOVEMENT_SPEED * frameDeltaTime;
-            nodePosition.Y += MOVEMENT_SPEED * frameDeltaTime;
+            nodePosition.rotateXYBy(1, nodeTarget);
         }
         else if(receiver.IsKeyDown(irr::KEY_KEY_E)) {
-//            nodePosition.X += MOVEMENT_SPEED * frameDeltaTime;
-            nodePosition.Y -= MOVEMENT_SPEED * frameDeltaTime;
+            nodePosition.rotateXYBy(-1, nodeTarget);        
         }
 
         if (receiver.IsKeyDown(irr::KEY_ESCAPE)) {
