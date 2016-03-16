@@ -79,9 +79,9 @@ struct MapSector
                         vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta+delta,k*delta+delta), vector3df(0,1,1), colors[k], vector2d<f32>(1, 0)));
                         vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta+delta,k*delta+delta), vector3df(0,0,1), colors[k], vector2d<f32>(0, 0)));
 
-                        u16 ind[] = {   si,si+3,si+1, si,si+2,si+3, si+4,si+5,si+7, si+4,si+7,si+6
-//                                        si,si+4,si+3, si+3,si+4,si+7, si+6,si+5,si+1, si+2,si+6,si+1,
-//                                        si+3,si+7,si+2, si+2,si+7,si+6, si+5,si+4,si+1, si+4,si,si+1
+                        u16 ind[] = {   si,si+3,si+1, si,si+2,si+3, si+4,si+5,si+7, si+4,si+7,si+6,
+                                        si,si+4,si+2, si+4,si+6,si+2, si+5,si+1,si+3, si+5,si+3,si+7,
+                                        si+2,si+6,si+7, si+2,si+7,si+3, si+5,si+4,si, si+5,si,si+1
                                     };
 
                         indices.insert(indices.end(), ind, ind + sizeof(ind)/sizeof(u16));
@@ -100,7 +100,7 @@ public:
     {
         sector(0,0,0) = EMPTY;
         sector(0,0,1) = EMPTY;
-        sector(0,0,2) = EMPTY;
+        sector(1,1,2) = EMPTY;
         sector(0,0,3) = EMPTY;
         sector(1,0,3) = EMPTY;
         sector(1,1,3) = EMPTY;
@@ -110,9 +110,9 @@ public:
     void buildMesh(vector<video::S3DVertex> &vertices, vector<u16> &indices, int global_layer)
     {
         video::SColor color(255, 255, 0, 0);
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 1; i++)
         {
-            for (int j = 0; j < 3; j++)
+            for (int j = 0; j < 1; j++)
             {
                 sector.buildMesh(vector3df(i*40,j*40,0), vertices, indices, color, global_layer);
             }
