@@ -55,7 +55,7 @@ struct MapSector
 
     static const int delta = 10;
 
-    void buildMesh(vector<video::S3DVertex> &vertices, vector<u16> &indices, video::SColor color)
+    void buildMesh(vector3df startPosition, vector<video::S3DVertex> &vertices, vector<u16> &indices, video::SColor color, int visible_layer)
     {
         video::SColor colors[SECTOR_DIMENTION] = {video::SColor(255, 255, 0, 0), video::SColor(255, 0, 255, 0), 
                                                   video::SColor(255, 0, 0, 255), video::SColor(255, 255, 255, 0)};
@@ -66,18 +66,18 @@ struct MapSector
             {
                 for (int k = 0; k < SECTOR_DIMENTION; k++)
                 {
-                    if (blocks[i][j][k].type != EMPTY)
+                    if (blocks[i][j][k].type != EMPTY && k < visible_layer)
                     {
                         u16 si = vertices.size();
-                        vertices.push_back(video::S3DVertex(i*delta,j*delta,k*delta, 1,1,0, colors[k], 0, 1));
-                        vertices.push_back(video::S3DVertex(i*delta+delta,j*delta,k*delta, 1,0,0, colors[k], 1, 1));
-                        vertices.push_back(video::S3DVertex(i*delta,j*delta+delta,k*delta, 0,1,1, colors[k], 1, 0));
-                        vertices.push_back(video::S3DVertex(i*delta+delta,j*delta+delta,k*delta, 0,0,1, colors[k], 0, 0));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta,k*delta), vector3df(1,1,0), colors[k], vector2d<f32>(0, 1)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta,k*delta), vector3df(1,0,0), colors[k], vector2d<f32>(1, 1)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta+delta,k*delta), vector3df(0,1,1), colors[k], vector2d<f32>(1, 0)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta+delta,k*delta), vector3df(0,0,1), colors[k], vector2d<f32>(0, 0)));
 
-                        vertices.push_back(video::S3DVertex(i*delta,j*delta,k*delta+delta, 1,1,0, colors[k], 0, 1));
-                        vertices.push_back(video::S3DVertex(i*delta+delta,j*delta,k*delta+delta, 1,0,0, colors[k], 1, 1));
-                        vertices.push_back(video::S3DVertex(i*delta,j*delta+delta,k*delta+delta, 0,1,1, colors[k], 1, 0));
-                        vertices.push_back(video::S3DVertex(i*delta+delta,j*delta+delta,k*delta+delta, 0,0,1, colors[k], 0, 0));                        
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta,k*delta+delta), vector3df(1,1,0), colors[k], vector2d<f32>(0, 1)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta,k*delta+delta), vector3df(1,0,0), colors[k], vector2d<f32>(1, 1)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta+delta,k*delta+delta), vector3df(0,1,1), colors[k], vector2d<f32>(1, 0)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta+delta,k*delta+delta), vector3df(0,0,1), colors[k], vector2d<f32>(0, 0)));
 
                         u16 ind[] = {   si,si+3,si+1, si,si+2,si+3, si+4,si+5,si+7, si+4,si+7,si+6
 //                                        si,si+4,si+3, si+3,si+4,si+7, si+6,si+5,si+1, si+2,si+6,si+1,
@@ -107,10 +107,17 @@ public:
         sector(3,3,3) = EMPTY;
     }
 
-    void buildMesh(vector<video::S3DVertex> &vertices, vector<u16> &indices)
+    void buildMesh(vector<video::S3DVertex> &vertices, vector<u16> &indices, int global_layer)
     {
         video::SColor color(255, 255, 0, 0);
-        sector.buildMesh(vertices, indices, color);
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                sector.buildMesh(vector3df(i*40,j*40,0), vertices, indices, color, global_layer);
+            }
+        }
+        
     }
 };
 
@@ -150,6 +157,7 @@ int main(int argc, char *args[])
 
     Map map;
     float angle = 0;
+    int global_layer = 4;
 
     // ask user for driver
     video::E_DRIVER_TYPE driverType=EDT_OPENGL;
@@ -175,11 +183,12 @@ int main(int argc, char *args[])
     camera->bindTargetAndRotation(false);
     camera->setUpVector(vector3df(0,0,1));
     SMesh *mesh = new SMesh();
+    IMeshSceneNode * mesh_node;
 /////
     vector<video::S3DVertex> vertices;
     vector<u16> indices;
 
-    map.buildMesh(vertices, indices);
+    map.buildMesh(vertices, indices, global_layer);
 
     video::SMaterial material;
     material.Wireframe = false;
@@ -191,10 +200,13 @@ int main(int argc, char *args[])
     mesh->addMeshBuffer(buf);
 ////
 
-    smgr->addMeshSceneNode(mesh);
+    mesh_node = smgr->addMeshSceneNode(mesh);
 
     int frameDeltaTime = 1;
-    const int MOVEMENT_SPEED = 1;
+    const int MOVEMENT_SPEED = 2;
+    const int STEP_ANGLE = 2;
+    bool need_rebuild_mesh = false;
+    bool layer_button_not_pressed = true;
 
     while(device->run())
     {
@@ -232,29 +244,81 @@ int main(int argc, char *args[])
 
         }
 
-        if(receiver.IsKeyDown(irr::KEY_KEY_W)) {
+        if(receiver.IsKeyDown(irr::KEY_KEY_W)) 
+        {
             float distanse = MOVEMENT_SPEED * frameDeltaTime;
             dir *= distanse;
             dir.Z = 0;
             nodePosition -= dir;
             nodeTarget -= dir;
         }
-        else if(receiver.IsKeyDown(irr::KEY_KEY_S)) {
+        else if(receiver.IsKeyDown(irr::KEY_KEY_S)) 
+        {
             float distanse = MOVEMENT_SPEED * frameDeltaTime;
             dir *= distanse;
             dir.Z = 0;
             nodePosition += dir;
             nodeTarget += dir;
         }
-        else if(receiver.IsKeyDown(irr::KEY_KEY_Q)) {
-            nodePosition.rotateXYBy(1, nodeTarget);
+        else if(receiver.IsKeyDown(irr::KEY_KEY_Q)) 
+        {
+            nodePosition.rotateXYBy(STEP_ANGLE, nodeTarget);
         }
-        else if(receiver.IsKeyDown(irr::KEY_KEY_E)) {
-            nodePosition.rotateXYBy(-1, nodeTarget);        
+        else if(receiver.IsKeyDown(irr::KEY_KEY_E)) 
+        {
+            nodePosition.rotateXYBy(-STEP_ANGLE, nodeTarget);        
+        }
+        else if(receiver.IsKeyDown(irr::KEY_KEY_R) && layer_button_not_pressed) 
+        {
+            if (global_layer<4)
+            {
+                global_layer++;
+                need_rebuild_mesh = true;
+            }
+            layer_button_not_pressed = false;
+        }
+        else if(receiver.IsKeyDown(irr::KEY_KEY_F) && layer_button_not_pressed) 
+        {
+            if (global_layer > 0)
+            {
+                global_layer --;
+                need_rebuild_mesh = true;
+            }
+            layer_button_not_pressed = false;
+        }
+        else
+        {
+            layer_button_not_pressed = true;
         }
 
-        if (receiver.IsKeyDown(irr::KEY_ESCAPE)) {
+        if (receiver.IsKeyDown(irr::KEY_ESCAPE)) 
+        {
             break;
+        }
+
+        if (need_rebuild_mesh)
+        {
+            mesh_node->remove();
+//            delete mesh_node;
+            SMesh *new_mesh = new SMesh();
+        /////
+            vector<video::S3DVertex> vertices;
+            vector<u16> indices;
+
+            map.buildMesh(vertices, indices, global_layer);
+
+            video::SMaterial material;
+            material.Wireframe = false;
+            material.Lighting = false;    
+
+            scene::SMeshBuffer *buf = new scene::SMeshBuffer();
+            buf->Material = material;
+            buf->append(vertices.data(), vertices.size(), indices.data(), indices.size());
+            new_mesh->addMeshBuffer(buf);
+        ////
+
+            mesh_node = smgr->addMeshSceneNode(new_mesh);
+            need_rebuild_mesh = false;
         }
 
         camera->setPosition(nodePosition);
