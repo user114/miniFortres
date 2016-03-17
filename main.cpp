@@ -69,15 +69,15 @@ struct MapSector
                     if (blocks[i][j][k].type != EMPTY && k < visible_layer)
                     {
                         u16 si = vertices.size();
-                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta,k*delta), vector3df(1,1,0), colors[k], vector2d<f32>(0, 1)));
-                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta,k*delta), vector3df(1,0,0), colors[k], vector2d<f32>(1, 1)));
-                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta+delta,k*delta), vector3df(0,1,1), colors[k], vector2d<f32>(1, 0)));
-                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta+delta,k*delta), vector3df(0,0,1), colors[k], vector2d<f32>(0, 0)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta,k*delta), vector3df(-1,-1,-1), colors[k], vector2d<f32>(0, 1)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta,k*delta), vector3df(-1,-1,1), colors[k], vector2d<f32>(1, 1)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta+delta,k*delta), vector3df(1,-1,-1), colors[k], vector2d<f32>(1, 0)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta+delta,k*delta), vector3df(1,-1,1), colors[k], vector2d<f32>(0, 0)));
 
-                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta,k*delta+delta), vector3df(1,1,0), colors[k], vector2d<f32>(0, 1)));
-                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta,k*delta+delta), vector3df(1,0,0), colors[k], vector2d<f32>(1, 1)));
-                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta+delta,k*delta+delta), vector3df(0,1,1), colors[k], vector2d<f32>(1, 0)));
-                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta+delta,k*delta+delta), vector3df(0,0,1), colors[k], vector2d<f32>(0, 0)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta,k*delta+delta), vector3df(-1,1,-1), colors[k], vector2d<f32>(0, 1)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta,k*delta+delta), vector3df(-1,1,1), colors[k], vector2d<f32>(1, 1)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta+delta,k*delta+delta), vector3df(1,1,-1), colors[k], vector2d<f32>(1, 0)));
+                        vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta+delta,j*delta+delta,k*delta+delta), vector3df(1,1,1), colors[k], vector2d<f32>(0, 0)));
 
                         u16 ind[] = {   si,si+3,si+1, si,si+2,si+3, si+4,si+5,si+7, si+4,si+7,si+6,
                                         si,si+4,si+2, si+4,si+6,si+2, si+5,si+1,si+3, si+5,si+3,si+7,
@@ -158,6 +158,8 @@ int main(int argc, char *args[])
     Map map;
     float angle = 0;
     int global_layer = 4;
+    ILightSceneNode * sun_node;
+    SLight sun_data;
 
     // ask user for driver
     video::E_DRIVER_TYPE driverType=EDT_OPENGL;
@@ -184,6 +186,7 @@ int main(int argc, char *args[])
     camera->setUpVector(vector3df(0,0,1));
     SMesh *mesh = new SMesh();
     IMeshSceneNode * mesh_node;
+    ISceneNode *cubeNode;
 /////
     vector<video::S3DVertex> vertices;
     vector<u16> indices;
@@ -191,8 +194,14 @@ int main(int argc, char *args[])
     map.buildMesh(vertices, indices, global_layer);
 
     video::SMaterial material;
-    material.Wireframe = false;
-    material.Lighting = false;    
+//    material.Wireframe = false;
+    material.Lighting = true;
+
+    material.NormalizeNormals=true;
+    material.AmbientColor=SColor(255,255,255,255);
+    material.DiffuseColor=SColor(255,0,0,0);
+    material.EmissiveColor=SColor(255,0,0,0);
+    material.SpecularColor=SColor(255,0,0,0);    
 
     scene::SMeshBuffer *buf = new scene::SMeshBuffer();
     buf->Material = material;
@@ -201,6 +210,26 @@ int main(int argc, char *args[])
 ////
 
     mesh_node = smgr->addMeshSceneNode(mesh);
+
+    cubeNode = smgr->addCubeSceneNode();
+    cubeNode->setPosition(vector3df(50,0,50));
+
+//    mesh_node->addShadowVolumeSceneNode();
+    smgr->setShadowColor(video::SColor(150,0,0,0));    
+
+    sun_node=smgr->addLightSceneNode();
+    sun_data.Direction=vector3df(0,0,1);
+    sun_data.Type=video::ELT_DIRECTIONAL;
+
+    sun_data.AmbientColor=video::SColorf(0.6f,0.6f,0.6f,1);
+    sun_data.SpecularColor=video::SColorf(0.8f,0.8f,0.8f,1);
+    sun_data.DiffuseColor=video::SColorf(1.0f,1.0f,1.0f,1);
+    sun_data.CastShadows=false;
+    sun_node->setPosition(vector3df(0,0,0));
+    sun_node->setRotation(vector3df(0,1,0));
+    sun_node->setRadius(800);
+    sun_node->setLightData(sun_data);
+
 
     int frameDeltaTime = 1;
     const int MOVEMENT_SPEED = 2;
@@ -263,6 +292,7 @@ int main(int argc, char *args[])
         else if(receiver.IsKeyDown(irr::KEY_KEY_Q)) 
         {
             nodePosition.rotateXYBy(STEP_ANGLE, nodeTarget);
+            mesh_node->rotateXYBy(STEP_ANGLE, nodeTarget);
         }
         else if(receiver.IsKeyDown(irr::KEY_KEY_E)) 
         {
