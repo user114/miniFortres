@@ -5,5 +5,5 @@ include_directories ("${PROJECT_SOURCE_DIR}/irrlicht/lib/Linux")
 include_directories ("${PROJECT_SOURCE_DIR}/irrlicht/include")
 
 add_subdirectory(tests)
-add_executable(my_df main.cpp)
+add_executable(my_df main.cpp map.cpp)
 target_link_libraries (my_df Irrlicht)
