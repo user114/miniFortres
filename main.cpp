@@ -53,6 +53,26 @@ struct MapSector
         return blocks[x][y][z];
     }
 
+    bool isVisible(int i, int j, int k)
+    {
+        if (i == 0 || j == 0 || k == 0 || i == SECTOR_DIMENTION - 1 || j == SECTOR_DIMENTION - 1 || k == SECTOR_DIMENTION - 1)
+            return true;
+        if (blocks[i+1][j][k].type == EMPTY)
+            return true;
+        if (blocks[i-1][j][k].type == EMPTY)
+            return true;
+        if (blocks[i][j-1][k].type == EMPTY)
+            return true;
+        if (blocks[i][j+1][k].type == EMPTY)
+            return true;
+        if (blocks[i][j][k+1].type == EMPTY)
+            return true;
+        if (blocks[i][j][k-1].type == EMPTY)
+            return true;
+
+        return false;
+    }
+
     static const int delta = 10;
 
     void buildMesh(vector3df startPosition, vector<video::S3DVertex> &vertices, vector<u16> &indices, video::SColor color, int visible_layer)
@@ -66,7 +86,7 @@ struct MapSector
             {
                 for (int k = 0; k < SECTOR_DIMENTION; k++)
                 {
-                    if (blocks[i][j][k].type != EMPTY && k < visible_layer)
+                    if (blocks[i][j][k].type != EMPTY && k < visible_layer && isVisible(i,j,k))
                     {
                         u16 si = vertices.size();
                         vertices.push_back(video::S3DVertex(startPosition + vector3df(i*delta,j*delta,k*delta), vector3df(-1,-1,-1), colors[k], vector2d<f32>(0, 1)));
@@ -96,23 +116,27 @@ class Map
 {
     MapSector sector;
 public:
+
+    int global_layer;
+
     Map()
+        : global_layer(4)
     {
-        sector(0,0,0) = EMPTY;
-        sector(0,0,1) = EMPTY;
-        sector(1,1,2) = EMPTY;
-        sector(0,0,3) = EMPTY;
-        sector(1,0,3) = EMPTY;
-        sector(1,1,3) = EMPTY;
-        sector(3,3,3) = EMPTY;
+        // sector(0,0,0) = EMPTY;
+        // sector(0,0,1) = EMPTY;
+        // sector(1,1,2) = EMPTY;
+        // sector(0,0,3) = EMPTY;
+        // sector(1,0,3) = EMPTY;
+        // sector(1,1,3) = EMPTY;
+        // sector(3,3,3) = EMPTY;
     }
 
-    void buildMesh(vector<video::S3DVertex> &vertices, vector<u16> &indices, int global_layer)
+    void buildMesh(vector<video::S3DVertex> &vertices, vector<u16> &indices)
     {
         video::SColor color(255, 255, 0, 0);
-        for (int i = 0; i < 1; i++)
+        for (int i = 0; i < 2; i++)
         {
-            for (int j = 0; j < 1; j++)
+            for (int j = 0; j < 2; j++)
             {
                 sector.buildMesh(vector3df(i*40,j*40,0), vertices, indices, color, global_layer);
             }
@@ -151,17 +175,15 @@ private:
     bool KeyIsDown[KEY_KEY_CODES_COUNT];
 };
 
+IMeshSceneNode *rebuildMesh(scene::ISceneManager* smgr, Map &map, IMeshSceneNode * mesh_node);
+
 int main(int argc, char *args[])
 {
-    std::cout << "test1" << std::endl;
-
     Map map;
     float angle = 0;
-    int global_layer = 4;
     ILightSceneNode * sun_node;
     SLight sun_data;
 
-    // ask user for driver
     video::E_DRIVER_TYPE driverType=EDT_OPENGL;
 
     MyEventReceiver receiver;
@@ -184,41 +206,14 @@ int main(int argc, char *args[])
     camera = smgr->addCameraSceneNode(0, vector3df(-100,0,100), vector3df(0,0,0));
     camera->bindTargetAndRotation(false);
     camera->setUpVector(vector3df(0,0,1));
-    SMesh *mesh = new SMesh();
-    IMeshSceneNode * mesh_node;
-    ISceneNode *cubeNode;
-/////
-    vector<video::S3DVertex> vertices;
-    vector<u16> indices;
+    IMeshSceneNode * mesh_node = 0;
 
-    map.buildMesh(vertices, indices, global_layer);
+    mesh_node = rebuildMesh(smgr, map, 0);
 
-    video::SMaterial material;
-//    material.Wireframe = false;
-    material.Lighting = true;
-
-    material.NormalizeNormals=true;
-    material.AmbientColor=SColor(255,255,255,255);
-    material.DiffuseColor=SColor(255,0,0,0);
-    material.EmissiveColor=SColor(255,0,0,0);
-    material.SpecularColor=SColor(255,0,0,0);    
-
-    scene::SMeshBuffer *buf = new scene::SMeshBuffer();
-    buf->Material = material;
-    buf->append(vertices.data(), vertices.size(), indices.data(), indices.size());
-    mesh->addMeshBuffer(buf);
-////
-
-    mesh_node = smgr->addMeshSceneNode(mesh);
-
-    cubeNode = smgr->addCubeSceneNode();
-    cubeNode->setPosition(vector3df(50,0,50));
-
-//    mesh_node->addShadowVolumeSceneNode();
     smgr->setShadowColor(video::SColor(150,0,0,0));    
 
     sun_node=smgr->addLightSceneNode();
-    sun_data.Direction=vector3df(0,0,1);
+    sun_data.Direction=vector3df(0,1,1);
     sun_data.Type=video::ELT_DIRECTIONAL;
 
     sun_data.AmbientColor=video::SColorf(0.6f,0.6f,0.6f,1);
@@ -226,9 +221,10 @@ int main(int argc, char *args[])
     sun_data.DiffuseColor=video::SColorf(1.0f,1.0f,1.0f,1);
     sun_data.CastShadows=false;
     sun_node->setPosition(vector3df(0,0,0));
-    sun_node->setRotation(vector3df(0,1,0));
+    sun_node->setRotation(vector3df(1,1,0));
     sun_node->setRadius(800);
     sun_node->setLightData(sun_data);
+    sun_node->setLightType(video::ELT_DIRECTIONAL);
 
 
     int frameDeltaTime = 1;
@@ -292,7 +288,6 @@ int main(int argc, char *args[])
         else if(receiver.IsKeyDown(irr::KEY_KEY_Q)) 
         {
             nodePosition.rotateXYBy(STEP_ANGLE, nodeTarget);
-            mesh_node->rotateXYBy(STEP_ANGLE, nodeTarget);
         }
         else if(receiver.IsKeyDown(irr::KEY_KEY_E)) 
         {
@@ -300,18 +295,18 @@ int main(int argc, char *args[])
         }
         else if(receiver.IsKeyDown(irr::KEY_KEY_R) && layer_button_not_pressed) 
         {
-            if (global_layer<4)
+            if (map.global_layer<4)
             {
-                global_layer++;
+                map.global_layer++;
                 need_rebuild_mesh = true;
             }
             layer_button_not_pressed = false;
         }
         else if(receiver.IsKeyDown(irr::KEY_KEY_F) && layer_button_not_pressed) 
         {
-            if (global_layer > 0)
+            if (map.global_layer > 0)
             {
-                global_layer --;
+                map.global_layer --;
                 need_rebuild_mesh = true;
             }
             layer_button_not_pressed = false;
@@ -328,26 +323,7 @@ int main(int argc, char *args[])
 
         if (need_rebuild_mesh)
         {
-            mesh_node->remove();
-//            delete mesh_node;
-            SMesh *new_mesh = new SMesh();
-        /////
-            vector<video::S3DVertex> vertices;
-            vector<u16> indices;
-
-            map.buildMesh(vertices, indices, global_layer);
-
-            video::SMaterial material;
-            material.Wireframe = false;
-            material.Lighting = false;    
-
-            scene::SMeshBuffer *buf = new scene::SMeshBuffer();
-            buf->Material = material;
-            buf->append(vertices.data(), vertices.size(), indices.data(), indices.size());
-            new_mesh->addMeshBuffer(buf);
-        ////
-
-            mesh_node = smgr->addMeshSceneNode(new_mesh);
+            mesh_node = rebuildMesh(smgr, map, mesh_node);
             need_rebuild_mesh = false;
         }
 
@@ -365,4 +341,33 @@ int main(int argc, char *args[])
     device->drop();
 
     return 0;
+}
+
+IMeshSceneNode *rebuildMesh(scene::ISceneManager* smgr, Map &map, IMeshSceneNode * mesh_node)
+{
+    if (mesh_node)
+        mesh_node->remove();
+
+    SMesh *new_mesh = new SMesh();
+
+    vector<video::S3DVertex> vertices;
+    vector<u16> indices;
+
+    map.buildMesh(vertices, indices);
+
+    video::SMaterial material;
+    material.Lighting = true;
+
+    material.NormalizeNormals=true;
+    material.AmbientColor=SColor(255,255,255,255);
+    material.DiffuseColor=SColor(255,0,0,0);
+    material.EmissiveColor=SColor(255,0,0,0);
+    material.SpecularColor=SColor(255,0,0,0);
+
+    scene::SMeshBuffer *buf = new scene::SMeshBuffer();
+    buf->Material = material;
+    buf->append(vertices.data(), vertices.size(), indices.data(), indices.size());
+    new_mesh->addMeshBuffer(buf);
+
+    return smgr->addMeshSceneNode(new_mesh);
 }
