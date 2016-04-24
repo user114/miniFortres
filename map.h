@@ -2,6 +2,7 @@
 #define MAP_H
 
 #include <irrlicht.h>
+#include <iostream>
 #include <vector>
 #include <cassert>
 
@@ -16,7 +17,7 @@ using namespace gui;
 using namespace std;
 enum BlockType
 {
-    EMPTY,
+    EMPTY = 0,
     DERT
 };
 
@@ -62,7 +63,7 @@ public:
 
 class Map
 {
-    MapSector sector;
+    vector<MapSector*> sectors;
 
 public:
 
@@ -70,7 +71,8 @@ public:
     
     Map();
     void buildMesh(vector<video::S3DVertex> &vertices, vector<u16> &indices);
-
+    bool readFromStream(iostream &stream);
+    void readSector(iostream &stream, MapSector &sector);
 
 };
 

@@ -59,6 +59,7 @@ void MapSector::buildMesh(vector3df startPosition, vector<video::S3DVertex> &ver
     }
 }
 
+//================================================================================================================
 
 Map::Map()
     : global_layer(4)
@@ -77,10 +78,50 @@ void Map::buildMesh(vector<video::S3DVertex> &vertices, vector<u16> &indices)
     video::SColor color(255, 255, 0, 0);
     for (int i = 0; i < 2; i++)
     {
-        for (int j = 0; j < 2; j++)
+        for (auto sector: sectors)
         {
-            sector.buildMesh(vector3df(i*40,j*40,0), vertices, indices, color, global_layer);
+            sector->buildMesh(vector3df(sector->position.X*40,sector->position.Y*40,sector->position.Z*40), vertices, indices, color, global_layer);
         }
     }
     
+}
+
+bool Map::readFromStream(iostream &stream)
+{
+	int i,j,k;
+
+	if (stream.bad()) {
+		std::cout << "error: bad stream" << std::endl;
+		return false;
+	}
+
+	stream >> i >> j >> k;
+
+	std::cout << "i: " << i << "j: " << j << "k: " << k << endl;
+	int sectorCount = 0;
+
+	for (size_t x = 0; x < i; x++) {
+		for (size_t y = 0; y < j; y++) {
+			for (size_t z = 0; z < k; z++) {
+				MapSector *sector = new MapSector({x,y,z});
+				readSector(stream, *sector);
+				sectors.push_back(sector);
+				sectorCount++;
+			}
+		}
+	}
+
+	std::cout << "read finished: " << sectorCount << std::endl;
+	return true;
+}
+
+void Map::readSector(iostream &stream, MapSector &sector)
+{
+	for (int i = 0; i < SECTOR_DIMENTION; i++)
+		for (int j = 0; j < SECTOR_DIMENTION; j++)
+			for (int k = 0; k < SECTOR_DIMENTION; k++) {
+				unsigned int type;
+				stream >> type;
+				sector.blocks[i][j][k].type = (BlockType)type;
+			}
 }

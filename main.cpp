@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cassert>
+#include <sstream>
 
 #include <irrlicht.h>
 
@@ -49,6 +50,24 @@ int main(int argc, char *args[])
     ILightSceneNode * sun_node;
     SLight sun_data;
 
+    std::string test = "1 2 2 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 "
+    "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1";
+    stringstream ss(test);
+    map.readFromStream(ss);
+
     video::E_DRIVER_TYPE driverType=EDT_OPENGL;
 
     MyEventReceiver receiver;
@@ -68,7 +87,7 @@ int main(int argc, char *args[])
 
     ICameraSceneNode * camera;
 
-    camera = smgr->addCameraSceneNode(0, vector3df(-100,0,100), vector3df(0,0,0));
+    camera = smgr->addCameraSceneNode(0, vector3df(-200,0,200), vector3df(0,0,0));
     camera->bindTargetAndRotation(false);
     camera->setUpVector(vector3df(0,0,1));
     IMeshSceneNode * mesh_node = 0;
